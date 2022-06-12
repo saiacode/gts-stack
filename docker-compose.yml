@@ -6,7 +6,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.labels.gts == production
+          - node.labels.gts.production == 1
       labels:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
