@@ -1,16 +1,29 @@
+# GT System
 version: "3.8"
+
+networks:
+  db:
+    external: true
+    name: ${DB_NET}
+  ingress:
+    external: true
+    name: ${INGRESS_NET}
+volumes:
+  sftp:
+  ssh_vol:
+    external: true
 
 services:
   meteor:
-    image: aditzend/gtsystem:4.0.4
+    image: ${GTS_IMAGE}
     deploy:
       placement:
         constraints:
-          - node.labels.gts.production == 1
+          - node.labels.${NODE_LABEL} == 1
       labels:
         - traefik.enable=true
-        - traefik.docker.network=traefik-public
-        - traefik.constraint-label=traefik-public
+        - traefik.docker.network=${INGRESS_NET}
+        - traefik.constraint-label=${INGRESS_NET}
         - traefik.http.routers.${NAME}-meteor-http.rule=Host(`${DOMAIN}`)
         - traefik.http.routers.${NAME}-meteor-http.entrypoints=http
         - traefik.http.routers.${NAME}-meteor-http.middlewares=https-redirect
@@ -18,42 +31,33 @@ services:
         - traefik.http.routers.${NAME}-meteor-https.entrypoints=https
         - traefik.http.routers.${NAME}-meteor-https.tls=true
         - traefik.http.routers.${NAME}-meteor-https.tls.certresolver=le
-        - traefik.http.services.${NAME}-meteor.loadbalancer.server.port=${METEOR_PORT-3000}
-    #ports:
-     # - 3000:3000
+        - traefik.http.services.${NAME}-meteor.loadbalancer.server.port=${GTS_PORT}
+
     environment:
       MONGO_URL: ${MONGO_URL}
       ROOT_URL: "https://${DOMAIN}"
       EXACT_NODE_VERSION: "true"
-      NODE_VERSION: "4.8.2"
+      NODE_VERSION: "${NODE_VERSION}"
       METEOR_SETTINGS: ${METEOR_SETTINGS}
     networks:
-      - mongo
+      - db
       - ingress
   sftp:
     image: writl/sftp
-    labels:
-      gts: "sftp"
+    deploy:
+      placement:
+        constraints:
+          - node.labels.${NODE_LABEL} == 1    
     volumes:
       - sftp:/data/incoming
       - ssh_vol:/ssh
     ports:
-      - 53000:22
+      - ${SFTP_PORT}:22
     networks:
-      - mongo
+      - db
     environment:
-      - USER:sftp
+      - USER:${SFTP_USER}
       - PASS=${SFTP_PASS}
       - USER_ID=33
       - GROUP_ID=33
-networks:
-  mongo:
-    external: true
-    name: mongodb-public
-  ingress:
-    external: true
-    name: traefik-public
-volumes:
-  sftp:
-  ssh_vol:
-    external: true
+
